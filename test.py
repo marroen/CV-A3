@@ -1,59 +1,136 @@
-import os
 import torch
-from torch import nn
-from torch.utils.data import DataLoader, random_split
-from torchvision import datasets, transforms
-import torchvision.transforms as transforms, torchvision
-import matplotlib.pyplot as plt
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
 
-def main():
+# LeNet-5 Model Definition
+class LeNet5(nn.Module):
+    def __init__(self):
+        super(LeNet5, self).__init__()
+        self.conv1 = nn.Conv2d(3, 6, kernel_size=5)       # 3 input channels (RGB)
+        self.avg_pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
+        self.avg_pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(16*5*5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+        self.relu = nn.ReLU()
 
-        device = (
-        "cuda" if torch.cuda.is_available()
-        else "mps" if torch.backends.mps.is_available()
-        else "cpu"
-        )
-        print(f"Using {device} device")
+        # Kaiming initialization
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
-        # Define transforms
-        transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
+    def forward(self, x):
+        x = self.relu(self.conv1(x))       # [32,3,32,32] → [32,6,28,28]
+        x = self.avg_pool1(x)             # → [32,6,14,14]
+        x = self.relu(self.conv2(x))       # → [32,16,10,10]
+        x = self.avg_pool2(x)             # → [32,16,5,5]
+        x = x.view(x.size(0), -1)          # → [32,400]
+        x = self.relu(self.fc1(x))         # → [32,120]
+        x = self.relu(self.fc2(x))         # → [32,84]
+        x = self.fc3(x)                    # → [32,10]
+        return x
 
-        # Load dataset once (removed duplicate load)
-        trainset = datasets.CIFAR10(root='./data', 
-                                train=True,
-                                download=True,
-                                transform=transform)
+# CIFAR-10 Loading
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
 
-        # Split dataset (80% train, 20% validation)
-        train_size = int(0.8 * len(trainset))
-        val_size = len(trainset) - train_size
-        train_subset, val_subset = random_split(trainset, [train_size, val_size])
+train_dataset = torchvision.datasets.CIFAR10(
+    root='./data', 
+    train=True,
+    download=True,
+    transform=transform
+)
 
-        # Create data loaders
-        trainloader = DataLoader(train_subset, 
-                        batch_size=32,  # Increased from 4 for better performance
-                        shuffle=True,
-                        num_workers=2)
+test_dataset = torchvision.datasets.CIFAR10(
+    root='./data',
+    train=False,
+    download=True,
+    transform=transform
+)
 
-        valloader = DataLoader(val_subset,
-                        batch_size=32,
-                        shuffle=False,  # No need to shuffle validation data
-                        num_workers=2)
+batch_size = 32  # Use smaller batch_size if needed
+train_loader = torch.utils.data.DataLoader(
+    train_dataset, batch_size=batch_size, shuffle=True
+)
+test_loader = torch.utils.data.DataLoader(
+    test_dataset, batch_size=batch_size, shuffle=False
+)
 
-        # Visualization (now shows split sizes)
-        images, labels = next(iter(trainloader))
-        plt.figure(figsize=(10, 5))
-        plt.imshow(torchvision.utils.make_grid(images).permute(1, 2, 0) / 2 + 0.5)
-        plt.title(f'Train samples ({len(train_subset)} images)\n' + 
-                ' '.join(trainset.classes[label] for label in labels[:4]))
-        plt.axis('off')
-        plt.show()
+# Training Setup
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = LeNet5().to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        print(f"Training set size: {len(train_subset)} images")
-        print(f"Validation set size: {len(val_subset)} images")
+# Training Loop
+num_epochs = 10
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        
+        running_loss += loss.item()
+    
+    # Print epoch statistics
+    epoch_loss = running_loss / len(train_loader)
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}')
 
-if __name__ == '__main__':
-        main()
+print('Training finished')
+
+# Testing Function
+def test_model(model, test_loader, device):
+    model.eval()  # Set to evaluation mode
+    test_loss = 0.0
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():  # Disable gradient calculation
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            
+            # Statistics
+            test_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    
+    avg_loss = test_loss / len(test_loader)
+    accuracy = 100 * correct / total
+    print(f'Test Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%')
+    return accuracy
+
+# Run testing after training
+test_accuracy = test_model(model, test_loader, device)
+
+# Optional: Class-wise accuracy
+from sklearn.metrics import classification_report
+all_labels = []
+all_preds = []
+
+with torch.no_grad():
+    for inputs, labels in test_loader:
+        inputs = inputs.to(device)
+        outputs = model(inputs)
+        _, preds = torch.max(outputs, 1)
+        all_labels.extend(labels.cpu().numpy())
+        all_preds.extend(preds.cpu().numpy())
+
+print(classification_report(all_labels, all_preds, target_names=test_dataset.classes))
