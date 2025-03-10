@@ -165,13 +165,16 @@ def train_model(index):
     csv_filename = f"{model_name.lower()}_metrics.csv"
     with open(csv_filename, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['epoch', 'train_loss', 'val_loss', 'val_accuracy'])
+        writer.writerow(['epoch', 'train_loss', 'train_accuracy', 
+                        'val_loss', 'val_accuracy'])
 
     # Training Loop with validation
     num_epochs = 10
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
+        correct_train = 0
+        total_train = 0
         
         # Training phase
         for inputs, labels in train_loader:
@@ -183,16 +186,21 @@ def train_model(index):
             loss.backward()
             optimizer.step()
             
+            # Accumulate training metrics
             train_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            correct_train += (predicted == labels).sum().item()
+            total_train += labels.size(0)
         
-        # Calculate average training loss
+        # Calculate training metrics
         avg_train_loss = train_loss / len(train_loader)
+        train_accuracy = 100 * correct_train / total_train
         
         # Validation phase
         model.eval()
         val_loss = 0.0
-        correct = 0
-        total = 0
+        correct_val = 0
+        total_val = 0
         
         with torch.no_grad():
             for inputs, labels in val_loader:
@@ -202,27 +210,28 @@ def train_model(index):
                 
                 val_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                total_val += labels.size(0)
+                correct_val += (predicted == labels).sum().item()
 
         
-        
-        # Print epoch statistics
+        # Calculate validation metrics
         avg_val_loss = val_loss / len(val_loader)
-        val_accuracy = 100 * correct / total
+        val_accuracy = 100 * correct_val / total_val
 
-        # Append metrics to CSV
+        # Save to CSV
         with open(csv_filename, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 epoch+1,
                 f"{avg_train_loss:.4f}",
+                f"{train_accuracy:.2f}",
                 f"{avg_val_loss:.4f}",
                 f"{val_accuracy:.2f}"
             ])
         
         print(f"{model_name} Epoch [{epoch+1}/{num_epochs}] - "
               f"Train Loss: {avg_train_loss:.4f}, "
+              f"Train Acc: {train_accuracy:.2f}% | "
               f"Val Loss: {avg_val_loss:.4f}, "
               f"Val Acc: {val_accuracy:.2f}%")
 
