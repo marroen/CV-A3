@@ -148,7 +148,7 @@ test_loader = torch.utils.data.DataLoader(
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 criterion = nn.CrossEntropyLoss()
 
-def train_model(index):
+def train_model(index, save=False):
     # Model selection
     if index == 0:
         model = LeNet5A().to(device)
@@ -161,15 +161,16 @@ def train_model(index):
     
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Create CSV file and write header
-    csv_filename = f"{model_name.lower()}_metrics.csv"
-    with open(csv_filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['epoch', 'train_loss', 'train_accuracy', 
-                        'val_loss', 'val_accuracy'])
+    if save:
+        # Create CSV file and write header
+        csv_filename = f"{model_name.lower()}_metrics.csv"
+        with open(csv_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['epoch', 'train_loss', 'train_accuracy', 
+                            'val_loss', 'val_accuracy'])
 
     # Training Loop with validation
-    num_epochs = 10
+    num_epochs = 20
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -218,16 +219,17 @@ def train_model(index):
         avg_val_loss = val_loss / len(val_loader)
         val_accuracy = 100 * correct_val / total_val
 
-        # Save to CSV
-        with open(csv_filename, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                epoch+1,
-                f"{avg_train_loss:.4f}",
-                f"{train_accuracy:.2f}",
-                f"{avg_val_loss:.4f}",
-                f"{val_accuracy:.2f}"
-            ])
+        if save:
+            # Save to CSV
+            with open(csv_filename, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    epoch+1,
+                    f"{avg_train_loss:.4f}",
+                    f"{train_accuracy:.2f}",
+                    f"{avg_val_loss:.4f}",
+                    f"{val_accuracy:.2f}"
+                ])
         
         print(f"{model_name} Epoch [{epoch+1}/{num_epochs}] - "
               f"Train Loss: {avg_train_loss:.4f}, "
@@ -265,7 +267,7 @@ models = []
 # Train and evaluate models
 for i, model_name in enumerate(['A', 'B', 'C']):
     print(f'\nTraining Model {model_name}')
-    model = train_model(i)
+    model = train_model(i, True)
     
     # First evaluate on validation set
     val_loss, val_acc = evaluate_model(model, val_loader, device)
