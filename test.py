@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 from sklearn.metrics import classification_report
 import csv
 
-# LeNet-5 Model Definition A
+# LeNet-5 Model Definition A (avg. pooling)
 class LeNet5A(nn.Module):
     def __init__(self):
         super(LeNet5A, self).__init__()
@@ -45,6 +45,7 @@ class LeNet5B(nn.Module):
         self.avg_pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
         self.avg_pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        # Additional convolution layer added here
         self.conv3 = nn.Conv2d(16, 32, kernel_size=5)
         self.fc1 = nn.Linear(32 * 1 * 1, 120)
         self.fc2 = nn.Linear(120, 84)
