@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 import csv
 
-def train_model(model, train_loader, val_loader, device, criterion, save=False):
+def train_model(model, train_loader, val_loader, device, criterion, lr=0.001, save=False):
 
     model = model.to(device)
     
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr)
 
     if save:
         # Create CSV file and write header
