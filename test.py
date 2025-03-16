@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
-from sklearn.metrics import classification_report
 import csv
 
 # LeNet-5 Model Definition A (avg. pooling)
@@ -105,50 +102,7 @@ class LeNet5C(nn.Module):
         x = self.fc3(x)                    # → [32,10]
         return x
 
-# CIFAR-10 Loading with validation split
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
-# Load datasets
-train_val_dataset = torchvision.datasets.CIFAR10(
-    root='./data', 
-    train=True,
-    download=True,
-    transform=transform
-)
-
-test_dataset = torchvision.datasets.CIFAR10(
-    root='./data',
-    train=False,
-    download=True,
-    transform=transform
-)
-
-# Split train into 80% train, 20% validation
-train_size = int(0.8 * len(train_val_dataset))
-val_size = len(train_val_dataset) - train_size
-train_subset, val_subset = torch.utils.data.random_split(
-    train_val_dataset, [train_size, val_size],
-    generator=torch.Generator().manual_seed(42)  # For reproducibility
-)
-
-# Create data loaders
-batch_size = 32
-train_loader = torch.utils.data.DataLoader(
-    train_subset, batch_size=batch_size, shuffle=True
-)
-val_loader = torch.utils.data.DataLoader(
-    val_subset, batch_size=batch_size, shuffle=False
-)
-test_loader = torch.utils.data.DataLoader(
-    test_dataset, batch_size=batch_size, shuffle=False
-)
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-criterion = nn.CrossEntropyLoss()
-
+'''
 def train_model(index, save=False):
     # Model selection
     if index == 0:
@@ -239,10 +193,10 @@ def train_model(index, save=False):
               f"Val Acc: {val_accuracy:.2f}%")
 
     print('Training finished')
-    return model
+    return model'''
 
 # Testing Function (works for both validation and test sets)
-def evaluate_model(model, loader, device):
+def evaluate_model(model, loader, device, criterion):
     model.eval()
     test_loss = 0.0
     correct = 0
@@ -263,6 +217,8 @@ def evaluate_model(model, loader, device):
     avg_loss = test_loss / len(loader)
     accuracy = 100 * correct / total
     return avg_loss, accuracy
+
+'''
 
 models = []
 # Train and evaluate models
@@ -295,4 +251,73 @@ with torch.no_grad():
         all_preds.extend(preds.cpu().numpy())
 
 print('\nClassification Report:')
-print(classification_report(all_labels, all_preds, target_names=test_dataset.classes))
+print(classification_report(all_labels, all_preds, target_names=test_dataset.classes)) '''
+
+#################################
+
+def train_final_model(train_val_dataset, model_class, best_params, device, criterion, save=False):
+    full_train_loader = torch.utils.data.DataLoader(
+        train_val_dataset,
+        batch_size=best_params['batch_size'],
+        shuffle=True
+    )
+    
+    model = model_class().to(device)
+    
+    if best_params['optimizer'] == 'Adam':
+        optimizer = optim.Adam(model.parameters(),
+                             lr=best_params['lr'],
+                             weight_decay=best_params['weight_decay'])
+    elif best_params['optimizer'] == 'SGD':
+        optimizer = optim.SGD(model.parameters(),
+                            lr=best_params['lr'],
+                            momentum=0.9,
+                            weight_decay=best_params['weight_decay'])
+    else:
+        optimizer = optim.RMSprop(model.parameters(),
+                                lr=best_params['lr'],
+                                weight_decay=best_params['weight_decay'])
+    
+    if save:
+        csv_filename = f"{model_class.__name__.lower()}_metrics.csv"
+        with open(csv_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['epoch', 'train_loss', 'train_accuracy'])
+    
+    num_epochs = 20
+    for epoch in range(num_epochs):
+        model.train()
+        train_loss = 0.0
+        correct_train = 0
+        total_train = 0
+        
+        for inputs, labels in full_train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            
+            train_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            correct_train += (predicted == labels).sum().item()
+            total_train += labels.size(0)
+        
+        avg_train_loss = train_loss / len(full_train_loader)
+        train_accuracy = 100 * correct_train / total_train
+        
+        if save:
+            with open(csv_filename, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    epoch+1,
+                    f"{avg_train_loss:.4f}",
+                    f"{train_accuracy:.2f}"
+                ])
+        
+        print(f"Epoch [{epoch+1}/{num_epochs}] - "
+              f"Train Loss: {avg_train_loss:.4f}, "
+              f"Train Acc: {train_accuracy:.2f}%")
+    
+    return model
