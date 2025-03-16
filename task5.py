@@ -38,6 +38,10 @@ for model_name, model in models_to_train.items():
     print(f'Model {model_name} Test Results:')
     print(f'Loss: {test_loss:.4f}, Accuracy: {test_acc:.2f}%')
 
+# Save the model weights after training
+LeNet5C_20_weights = LeNet5C_pretrained().to(device)
+torch.save(LeNet5C_20_weights.state_dict(), "LeNet5C_pretrained_weights.pth")
+
 # Optional: Class-wise accuracy (using test set)
 model = models_to_train["LeNet5C_pretrained"]  # Example using model C
 all_labels = []

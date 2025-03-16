@@ -3,9 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 import csv
 
-def train_model(model, train_loader, val_loader, device, criterion, lr=0.001, save=False):
+def train_model(model, train_loader, val_loader, device, criterion, lr=None, save=False):
 
     model = model.to(device)
+
+    custom_lr = True
+    if lr is None:
+        custom_lr = False
+        lr = 0.001
     
     optimizer = optim.Adam(model.parameters(), lr)
 
@@ -20,6 +25,16 @@ def train_model(model, train_loader, val_loader, device, criterion, lr=0.001, sa
     # Training Loop with validation
     num_epochs = 20
     for epoch in range(num_epochs):
+
+        # CHOICE TASK 1
+        # Halves the learning rate every 5 epochs
+        if not custom_lr and epoch % 5 == 0:
+            lr = lr/2
+            
+            # Updates learning rate
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+
         model.train()
         train_loss = 0.0
         correct_train = 0
