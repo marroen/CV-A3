@@ -81,8 +81,7 @@ def main():
     }
 
     # Train and validate all models
-    # for _, model_class in enumerate([LeNet5A, LeNet5B, LeNet5C, LeNet5C_20, LeNet5C_pretrained]):
-    for _, model_class in enumerate([LeNet5C]):
+    for _, model_class in enumerate([LeNet5A, LeNet5B, LeNet5C, LeNet5C_20, LeNet5C_pretrained]):
         model = None
         print(f"\n=== Optimizing {model_class.__name__} ===")
         if isinstance(model_class, LeNet5C_pretrained):
