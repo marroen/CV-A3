@@ -4,15 +4,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-
+# Get class embeddings from FC2 of a model
 def extract_embeddings(model, dataloader, device):
-    """Extract embeddings from the layer before output (FC2)"""
     model.eval()
     embeddings = []
     labels = []
     
     # Hook to capture FC2 output
     def hook(module, input, output):
+        # Detach output to remove gradient information, convert to CPU
         embeddings.append(output.detach().cpu().numpy())
     
     handle = model.fc2.register_forward_hook(hook)
@@ -26,8 +26,8 @@ def extract_embeddings(model, dataloader, device):
     handle.remove()
     return np.concatenate(embeddings), np.concatenate(labels)
 
+# Plot the class embeddings as a t-SNE graph
 def plot_tsne(embeddings, labels, class_names, model_name):
-    """Perform t-SNE dimensionality reduction and plot results"""
     tsne = TSNE(n_components=2, random_state=42)
     embeddings_2d = tsne.fit_transform(embeddings)
     
@@ -51,8 +51,8 @@ def plot_tsne(embeddings, labels, class_names, model_name):
     plt.ylabel('t-SNE Dimension 2')
     plt.show()
 
+# Analyze potential class confusions using clustering
 def analyze_confusions(embeddings, labels, class_names):
-    """Analyze potential class confusions using clustering"""
     from sklearn.cluster import KMeans
     from sklearn.metrics import confusion_matrix
     

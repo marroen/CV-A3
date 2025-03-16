@@ -1,4 +1,6 @@
-from test import train_final_model, evaluate_model, LeNet5A, LeNet5B, LeNet5C
+from models import LeNet5A, LeNet5B, LeNet5C, LeNet5C_20, LeNet5C_pretrained
+from training_fns import train_model_optimized, evaluate_model
+from task5 import create_pretrained
 from choice3 import run_genetic_algorithm
 from choice6 import extract_embeddings, plot_tsne, analyze_confusions
 from sklearn.metrics import classification_report
@@ -6,6 +8,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
+from torchinfo import summary
 
 # CIFAR-10 Loading with validation split
 transform = transforms.Compose([
@@ -51,8 +54,9 @@ test_loader = torch.utils.data.DataLoader(
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 criterion = nn.CrossEntropyLoss()
 
+# Main execution flow
 def main():
-    # Main execution flow
+    final_batch_size = None
     models = []
     best_hyperparams = []
     best_params_all = {
@@ -76,18 +80,25 @@ def main():
         }
     }
 
-    for _, model_class in enumerate([LeNet5A, LeNet5B, LeNet5C]):
-        model_name = model_class.__name__[-1]  # Get 'A', 'B', or 'C'
+    # Train and validate all models
+    # for _, model_class in enumerate([LeNet5A, LeNet5B, LeNet5C, LeNet5C_20, LeNet5C_pretrained]):
+    for _, model_class in enumerate([LeNet5C]):
+        model = None
         print(f"\n=== Optimizing {model_class.__name__} ===")
-        
+        if isinstance(model_class, LeNet5C_pretrained):
+            model = create_pretrained()
+        else:
+            model = model_class().to(device)
+
         # Genetic Algorithm Optimization
         best_params = run_genetic_algorithm(model_class, train_subset, val_subset, device, criterion)
         #best_params = best_params_all[model_name]
         best_hyperparams.append(best_params)
+        final_batch_size = best_params['batch_size']
         print(f"Best parameters for {model_class.__name__}: {best_params}")
         
         # Final Training with Best Parameters
-        model = train_final_model(train_val_dataset, model_class, best_params, device, criterion, save=True)
+        model = train_model_optimized(train_val_dataset, model, best_params, device, criterion, save=False)
         models.append(model)
         
         # Test Evaluation
@@ -100,7 +111,7 @@ def main():
         
         # Extract embeddings and plot
         embeddings, labels = extract_embeddings(model, test_loader, device)
-        plot_tsne(embeddings, labels, test_dataset.classes, model_name)
+        plot_tsne(embeddings, labels, test_dataset.classes, model_class.__name__)
         
         # Analyze potential confusions
         analyze_confusions(embeddings, labels, test_dataset.classes)
@@ -120,6 +131,7 @@ def main():
 
     print('\nClassification Report:')
     print(classification_report(all_labels, all_preds, target_names=test_dataset.classes))
+    summary(final_model, input_size=(final_batch_size, 3, 32, 32))
 
 
 if __name__ == "__main__":

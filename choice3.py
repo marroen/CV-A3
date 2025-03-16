@@ -6,7 +6,7 @@ import random
 
 # Genetic Algorithm Parameters
 POPULATION_SIZE = 8
-NUM_GENERATIONS = 3
+NUM_GENERATIONS = 1
 MUTATION_RATE = 0.1
 ELITE_SIZE = 2
 
