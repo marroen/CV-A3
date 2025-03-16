@@ -34,19 +34,11 @@ def create_pretrained():
 '''
 model = create_pretrained()
 
-model = train_model(model, train_loader, val_loader, device, criterion, lr=0.005, save=True)
+# Save the model weights after training
+LeNet5C_20_weights = LeNet5C_pretrained().to(device)
+torch.save(LeNet5C_20_weights.state_dict(), "LeNet5C_pretrained_weights.pth")
 
-# First evaluate on validation set
-val_loss, val_acc = evaluate_model(model, val_loader, device, criterion)
-print(f'Model {model_name} Validation Results:')
-print(f'Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%')
-
-# Then evaluate on test set
-test_loss, test_acc = evaluate_model(model, test_loader, device, criterion)
-print(f'Model {model_name} Test Results:')
-print(f'Loss: {test_loss:.4f}, Accuracy: {test_acc:.2f}%')
-
-# Class-wise accuracy
+# Optional: Class-wise accuracy (using test set)
 model = models_to_train["LeNet5C_pretrained"]  # Example using model C
 all_labels = []
 all_preds = []

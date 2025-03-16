@@ -24,18 +24,20 @@ test_dataset_100 = torchvision.datasets.CIFAR100(
     transform=transform
 )
 
-# Filters dataset to keep only the first 20 classes
-def first_20_classes(dataset):
+# Filters dataset to keep only the first 10 classes and the specified 10 labels
+def filtered_classes(dataset):
 
-    first_20 = []
+    cifar_labels = {"airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"}
+
+    filtered_labels = []
     for i, (image, label) in enumerate(dataset):
-        if label < 20:
-            first_20.append(i)
+        if label < 20 or label in cifar_labels:
+            filtered_labels.append(i)
 
-    return Subset(dataset, first_20)
+    return Subset(dataset, filtered_labels)
 
-train_val_dataset = first_20_classes(train_val_dataset_100)
-test_dataset = first_20_classes(test_dataset_100)
+train_val_dataset = filtered_classes(train_val_dataset_100)
+test_dataset = filtered_classes(test_dataset_100)
 
 # Split train into 80% train, 20% validation
 train_size = int(0.8 * len(train_val_dataset))
@@ -44,6 +46,37 @@ train_subset, val_subset = torch.utils.data.random_split(
     train_val_dataset, [train_size, val_size],
     generator=torch.Generator().manual_seed(42)  # For reproducibility
 )
+
+# CHOICE TASK 5
+# Takes a dataset, and adds a mirrored, upside down, and black and white version of each image to the dataset
+def augment_dataset(dataset):
+
+    augmented_images = []
+    augmented_labels = []
+
+    mirror = transforms.RandomHorizontalFlip(p=1.0)
+    flip = transforms.RandomVerticalFlip(p=1.0)
+    grayscale = transforms.Grayscale(num_output_channels=3)
+    
+    # Apply transformations on each image in dataset
+    for image, label in dataset:
+
+        mirrored = mirror(image)
+        flipped = flip(image)
+        grayscaled = grayscale(image)
+        
+        augmented_images.extend([image, mirrored, flipped, grayscaled])
+        augmented_labels.extend([label, label, label, label])
+    
+    # Create a new dataset with augmented data
+    augmented_dataset = torch.utils.data.TensorDataset(
+        torch.stack(augmented_images),
+        torch.tensor(augmented_labels)
+    )
+    
+    return augmented_dataset
+
+train_subset = augment_dataset(train_subset)
 
 # Create data loaders
 batch_size = 32
