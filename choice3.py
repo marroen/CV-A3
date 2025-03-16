@@ -155,19 +155,19 @@ def run_genetic_algorithm(model_class, train_subset, val_subset, device, criteri
         else:
             stagnation_counter += 1
 
-        # 3. Early stopping
+        # Early stopping
         if stagnation_counter >= EARLY_STOPPING_PATIENCE:
             print(f"Early stopping at generation {generation+1}")
             break
 
-        # 4. Tournament selection for parents
+        # Tournament selection for parents
         parents = []
         for _ in range(POPULATION_SIZE):  # Select enough parents for mating pool
             contenders = random.sample(list(enumerate(fitness)), TOURNAMENT_SIZE)
             contenders.sort(key=lambda x: x[1], reverse=True)
             parents.append(population[contenders[0][0]])
 
-        # 5. Create next generation
+        # Create next generation
         new_population = []
         
         # Keep elite (unmodified)
@@ -176,14 +176,14 @@ def run_genetic_algorithm(model_class, train_subset, val_subset, device, criteri
 
         # Generate offspring
         while len(new_population) < POPULATION_SIZE:
-            # 5a. Crossover
+            # Crossover
             parent1, parent2 = random.sample(parents, 2)
             child = crossover(parent1, parent2)
             
-            # 5b. Mutation with probability
+            # Mutation with probability
             child = mutate(child)  # Uses per-parameter MUTATION_RATE internally
             
-            # 5c. Ensure unique child (optional)
+            # Ensure unique child (optional)
             if ENFORCE_UNIQUE_INDIVIDUALS:
                 while child in new_population:
                     child = mutate(child)
